@@ -1109,15 +1109,14 @@ func marshalFilters(l *xdsapi.Listener, opts buildListenerOpts, chains []plugin.
 }
 
 func parseSubProtocol(name string) string {
-	sub := name
 	i := strings.Index(name, "-")
 	if i >= 0 {
-		sub = name[i+1:]
-	}
-	i = strings.Index(sub, "-")
-	if i >= 0 {
-		sub = sub[:i]
-		return sub
+		i++
+		j := strings.Index(name[i:], "-")
+		if j >= 0 {
+			i += j
+			return strings.ToLower(name[:i])
+		}
 	}
 	return "unknown"
 }
