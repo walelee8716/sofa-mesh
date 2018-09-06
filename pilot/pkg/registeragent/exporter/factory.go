@@ -16,10 +16,10 @@ package exporter
 
 import (
 	"os"
-
 	"istio.io/istio/pilot/pkg/registeragent/exporter/default"
 	"istio.io/istio/pilot/pkg/registeragent/exporter/hsf"
 	"istio.io/istio/pkg/log"
+	"istio.io/istio/pilot/pkg/registeragent/exporter/dubbo"
 )
 
 func RpcInfoExporterFactory() (r RpcAcutator) {
@@ -28,6 +28,8 @@ func RpcInfoExporterFactory() (r RpcAcutator) {
 	switch rpcType {
 	case "HSF":
 		r = hsf.NewRpcInfoExporter()
+	case "DUBBO":
+		r = dubbo.NewRpcInfoExporter()
 	default:
 		r = _default.NewRpcInfoExporter()
 	}
