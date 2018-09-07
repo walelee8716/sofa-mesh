@@ -26,8 +26,6 @@ func RpcInfoExporterFactory() (r RpcAcutator) {
 	rpcType := os.Getenv("RPC_TYPE")
 	log.Infof("rpcType: %s", rpcType)
 	switch rpcType {
-	case "HSF":
-		r = hsf.NewRpcInfoExporter()
 	case "DUBBO":
 		r = dubbo.NewRpcInfoExporter()
 	default:
