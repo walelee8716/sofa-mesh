@@ -17,7 +17,6 @@ package exporter
 import (
 	"os"
 	"istio.io/istio/pilot/pkg/registeragent/exporter/default"
-	"istio.io/istio/pilot/pkg/registeragent/exporter/hsf"
 	"istio.io/istio/pkg/log"
 	"istio.io/istio/pilot/pkg/registeragent/exporter/dubbo"
 )
