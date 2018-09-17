@@ -24,8 +24,8 @@ const (
 	destRule                = "destination-rule-all"
 	versionRule             = "virtual-service-provider-v1"
 	weightRule              = "virtual-service-provider-20-80"
-	consumerServiceHTTPPort = "8080"
-	consumerServiceName     = "dubbo-consumer"
+	consumerHTTPPort        = "8080"
+	consumerName            = "dubbo-consumer"
 	providerServiceName     = "dubbo-provider"
 	queryName               = "test"
 	expectedResponseContent = `Hello, test (from Spring Boot dubbo e2e test)`
@@ -155,14 +155,14 @@ func getApps() []framework.App {
 }
 
 func getConsumerTargetUrl(queryName string) (string) {
-	return fmt.Sprintf("http://%s.%s.svc.cluster.local:%s/sayHello?name=%s", consumerServiceName, tc.Kube.Namespace, consumerServiceHTTPPort, queryName)
+	return fmt.Sprintf("http://127.0.0.1:%s/sayHello?name=%s", consumerHTTPPort, queryName)
 }
 
 func fetchConsumerResult(url string) (string, error) {
 	namespace := tc.Kube.Namespace
 	kubeConfig := tc.Kube.KubeConfig
 
-	podName, err := util.GetPodName(namespace, "app="+busybox, kubeConfig)
+	podName, err := util.GetPodName(namespace, "app="+consumerName, kubeConfig)
 	if err != nil {
 		return "", err
 	}
