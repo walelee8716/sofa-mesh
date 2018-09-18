@@ -336,7 +336,7 @@ jobs:
             make docker.all
       - run: bin/testEnvRootMinikube.sh wait
       - run: docker images
-      - run: make test/local/x-protocol/e2e_dubbole
+      - run: E2E_ARGS="--skip_cleanup" make test/local/x-protocol/e2e_dubbole
       - <<: *recordZeroExitCodeIfTestPassed
       - <<: *recordNonzeroExitCodeIfTestFailed
       - <<: *markJobFinishesOnGCS
