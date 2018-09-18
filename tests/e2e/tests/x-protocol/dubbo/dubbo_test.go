@@ -1,16 +1,17 @@
 package dubbo
 
 import (
-	"testing"
 	"flag"
-	"istio.io/istio/tests/e2e/framework"
-	"istio.io/istio/pkg/log"
-	"os"
-	"istio.io/istio/tests/util"
 	"fmt"
-	"time"
-	"strings"
+	"os"
 	"path/filepath"
+	"strings"
+	"testing"
+	"time"
+
+	"istio.io/istio/pkg/log"
+	"istio.io/istio/tests/e2e/framework"
+	"istio.io/istio/tests/util"
 )
 
 const (
@@ -122,7 +123,7 @@ func getApps() []framework.App {
 	}
 }
 
-func getConsumerTargetUrl(queryName string) (string) {
+func getConsumerTargetUrl(queryName string) string {
 	return fmt.Sprintf("http://%s.%s.svc.cluster.local:%s/sayHello?name=%s", consumerName, tc.Kube.Namespace, consumerHTTPPort, queryName)
 }
 
