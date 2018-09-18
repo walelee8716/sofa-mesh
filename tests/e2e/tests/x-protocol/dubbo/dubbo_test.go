@@ -29,6 +29,7 @@ const (
 	providerServiceName     = "dubbo-provider"
 	queryName               = "test"
 	expectedResponseContent = `Hello, test (from Spring Boot dubbo e2e test)`
+	testRetryTimes          = 5
 )
 
 type testConfig struct {
@@ -36,8 +37,7 @@ type testConfig struct {
 }
 
 var (
-	tc        *testConfig
-	sleepTime = flag.Int("sleep_time", 15, "sleep time")
+	tc *testConfig
 )
 
 func TestMain(m *testing.M) {
@@ -57,26 +57,33 @@ func TestMain(m *testing.M) {
 func TestDubbo(t *testing.T) {
 	log.Infof("Begin to start test case")
 
-	seconds := time.Second * time.Duration(*sleepTime)
+	standby := 0
 
-	log.Infof("sleep %s", seconds)
-	time.Sleep(seconds)
+	for i := 0; i <= testRetryTimes; i++ {
+		time.Sleep(time.Duration(standby) * time.Second)
 
-	url := getConsumerTargetUrl(queryName)
-	log.Infof("fetch url: %s \n", url)
+		url := getConsumerTargetUrl(queryName)
+		log.Infof("%d time fetch url: %s \n", i, url)
+		actualResponseContent, err := fetchConsumerResult(url)
 
-	actualResponseContent, err := fetchConsumerResult(url)
+		if err != nil {
+			log.Errorf("error when fetch %s. Error %s", url, err)
+		} else {
+			log.Infof("success when fetch %s. response content: %s \n", url, actualResponseContent)
 
-	if err != nil {
-		log.Errorf("%s. Error %s", fmt.Sprintf("error when fetch %s", url), err)
-		os.Exit(-1)
-	}
+			if strings.Index(actualResponseContent, expectedResponseContent) != 0 {
+				log.Errorf("response content is not correct, expect include %s, but %s", expectedResponseContent, actualResponseContent)
+			} else {
+				log.Infof("response content is correct: %s", actualResponseContent)
+				break
+			}
+		}
 
-	log.Infof("response content: %s \n", actualResponseContent)
+		if i == testRetryTimes {
+			t.Fatalf("has been try %d times, but never success", i)
+		}
 
-	if strings.Index(actualResponseContent, expectedResponseContent) != 0 {
-		log.Errorf("%s. Error %s", fmt.Sprintf("response content is not correct, expect include %s, but %s", expectedResponseContent, actualResponseContent), err)
-		os.Exit(-1)
+		standby += 10
 	}
 }
 
