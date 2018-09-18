@@ -47,6 +47,8 @@ spec:
             -Ddubbo.reference.com.alibaba.boot.dubbo.demo.consumer.DemoService.url=dubbo://dubbo-provider:12345 \
             -Dserver.port=8080 \
             -Dlogging.level.org.springframework.web=DEBUG \
+            -Dserver.tomcat.accesslog.enabled=true \
+            -Dserver.tomcat.accesslog.directory=/home/admin/app/logs \
             -Ddubbo.consumer.check=false \
             -jar dubbo-consumer.jar
         image: docker.io/sofastack/e2e-dubbo-consumer:0.2.1

@@ -35,18 +35,9 @@ type testConfig struct {
 	*framework.CommonConfig
 }
 
-type dubboTestError struct {
-	message string
-}
-
-func (err dubboTestError) Error() string {
-	return fmt.Sprint(err.message)
-}
-
 var (
-	tc                *testConfig
-	skipCleanTestCase = flag.Bool("skip_clean_test_case", false, "whether to skip clean test case")
-	sleepTime         = flag.Int("sleep_time", 15, "sleep time")
+	tc        *testConfig
+	sleepTime = flag.Int("sleep_time", 15, "sleep time")
 )
 
 func TestMain(m *testing.M) {
@@ -64,45 +55,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestDubbo(t *testing.T) {
-	apps := getApps()
-
-	defer func() {
-		if *skipCleanTestCase {
-			return
-		}
-
-		for _, app := range tc.Kube.AppManager.Apps {
-			log.Infof("Clean: %s", app.AppYaml)
-			err := tc.Kube.AppManager.UndeployApp(app)
-
-			if err != nil {
-				log.Infof("Clean: %s failed", app.AppYaml)
-			} else {
-				log.Infof("Clean: %s success", app.AppYaml)
-
-			}
-		}
-	}()
-
-	for _, app := range apps {
-		log.Infof("Deploy app: %+v", app)
-
-		if err := tc.Kube.AppManager.DeployApp(&app); err != nil {
-			t.Fatalf("Failed to deploy app %s: %v", app.AppYaml, err)
-		}
-	}
-
-	if err := tc.Kube.AppManager.CheckDeployments(); err != nil {
-		t.Fatal("Failed waiting for apps to start")
-	}
-
 	log.Infof("Begin to start test case")
-	if err := validate(); err != nil {
-		t.Fatalf("Failed to validate: %s", err)
-	}
-}
-
-func validate() (err error) {
 
 	seconds := time.Second * time.Duration(*sleepTime)
 
@@ -115,16 +68,16 @@ func validate() (err error) {
 	actualResponseContent, err := fetchConsumerResult(url)
 
 	if err != nil {
-		return dubboTestError{fmt.Sprintf("error when fetch %s : %s", url, err)}
+		log.Errorf("%s. Error %s", fmt.Sprintf("error when fetch %s", url), err)
+		os.Exit(-1)
 	}
 
 	log.Infof("response content: %s \n", actualResponseContent)
 
 	if strings.Index(actualResponseContent, expectedResponseContent) != 0 {
-		return dubboTestError{fmt.Sprintf("response content is not correct, expect include %s, but %s", expectedResponseContent, actualResponseContent)}
+		log.Errorf("%s. Error %s", fmt.Sprintf("response content is not correct, expect include %s, but %s", expectedResponseContent, actualResponseContent), err)
+		os.Exit(-1)
 	}
-
-	return nil
 }
 
 func setTestConfig() error {
@@ -132,7 +85,14 @@ func setTestConfig() error {
 	if err != nil {
 		return err
 	}
-	tc = &testConfig{CommonConfig: cc}
+	tc = new(testConfig)
+	tc.CommonConfig = cc
+
+	apps := getApps()
+
+	for i := range apps {
+		tc.Kube.AppManager.AddApp(&apps[i])
+	}
 
 	return nil
 }
@@ -167,7 +127,7 @@ func fetchConsumerResult(url string) (string, error) {
 		return "", err
 	}
 
-	resp, err := util.PodExec(namespace, podName, "app", "curl --silent "+url, true, kubeConfig)
+	resp, err := util.PodExec(namespace, podName, "app", "curl --silent "+url, false, kubeConfig)
 
 	if err != nil {
 		return "", err
