@@ -20,13 +20,14 @@ const (
 	routeRulesDir           = "networking"
 	consumerYaml            = "dubbo-consumer"
 	providerYaml            = "dubbo-provider"
-	busybox                 = "busybox"
+	busyboxYaml             = "busybox"
 	destRule                = "destination-rule-all"
 	versionRule             = "virtual-service-provider-v1"
 	weightRule              = "virtual-service-provider-20-80"
 	consumerHTTPPort        = "8080"
+	busyboxName             = "busybox"
 	consumerName            = "dubbo-consumer"
-	providerServiceName     = "dubbo-provider"
+	providerName            = "dubbo-provider"
 	queryName               = "test"
 	expectedResponseContent = `Hello, test (from Spring Boot dubbo e2e test)`
 	testRetryTimes          = 5
@@ -115,21 +116,21 @@ func getApps() []framework.App {
 			KubeInject: true,
 		},
 		{
-			AppYaml:    getDeploymentPath(busybox),
+			AppYaml:    getDeploymentPath(busyboxYaml),
 			KubeInject: false,
 		},
 	}
 }
 
 func getConsumerTargetUrl(queryName string) (string) {
-	return fmt.Sprintf("http://127.0.0.1:%s/sayHello?name=%s", consumerHTTPPort, queryName)
+	return fmt.Sprintf("http://%s.%s.svc.cluster.local:%s/sayHello?name=%s", consumerName, tc.Kube.Namespace, consumerHTTPPort, queryName)
 }
 
 func fetchConsumerResult(url string) (string, error) {
 	namespace := tc.Kube.Namespace
 	kubeConfig := tc.Kube.KubeConfig
 
-	podName, err := util.GetPodName(namespace, "app="+consumerName, kubeConfig)
+	podName, err := util.GetPodName(namespace, "app="+busyboxName, kubeConfig)
 	if err != nil {
 		return "", err
 	}
