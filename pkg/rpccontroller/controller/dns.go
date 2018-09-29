@@ -25,6 +25,7 @@ import (
 
 	"github.com/coreos/etcd/clientv3"
 	"istio.io/istio/pkg/log"
+	"net/http"
 )
 
 const (
@@ -32,10 +33,19 @@ const (
 	defaultTTL   = 3600
 )
 
-// HostData to store
-type HostData struct {
+// EtcdHostData to store in etcd directly
+type EtcdHostData struct {
 	Host string `json:"host"`
 	TTL  int    `json:"ttl"`
+}
+
+// HostData to store use REST
+type HostData struct {
+	Zone 		string `json:"zone"`
+	Name 		string `json:"name"`
+	Type 		string `json:"type"`
+	Address string `json:"address, omitempty"`
+	TTL  		int    `json:"ttl, omitempty"`
 }
 
 // DNSInterface for DNS
@@ -44,13 +54,20 @@ type DNSInterface interface {
 	Delete(domain, suffix string) error
 }
 
-type coreDNS struct {
+type coreDNSEtcd struct {
 	Client *clientv3.Client
 }
 
-func newCoreDNS(client *clientv3.Client) *coreDNS {
-	return &coreDNS{
+func newCoreDNSEtcd(client *clientv3.Client) *coreDNSEtcd {
+	return &coreDNSEtcd{
 		Client: client,
+	}
+}
+
+func newCoreDNSREST(address string) * coreDNSREST {
+	log.Infof("new coredns struct use address %s", address)
+	return &coreDNSREST{
+		dnsAddress: address,
 	}
 }
 
@@ -66,26 +83,28 @@ func convertDomainToKey(domain string) string {
 }
 
 // Update
-func (cd *coreDNS) Update(domain, ip, suffix string) error {
+func (cd *coreDNSEtcd) Update(domain, ip, suffix string) error {
 	key := convertDomainToKey(domain + suffix)
 
-	hostData := HostData{
+	hostData := EtcdHostData{
 		Host: ip,
 		TTL:  defaultTTL,
 	}
 	data, _ := json.Marshal(&hostData)
-	log.Infof("put <%s, %s>", key, string(data))
+	value := string(data)
+
+	log.Infof("put <%s, %s>", key, value)
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	_, err := cd.Client.Put(ctx, key, string(data))
+	_, err := cd.Client.Put(ctx, key, value)
 	cancel()
 	if err != nil {
-		log.Errorf("put %s %s error: %v", key, string(data), err)
+		log.Errorf("put %s %s error: %v", key, value, err)
 	}
 	return err
 }
 
 // Delete
-func (cd *coreDNS) Delete(domain, suffix string) error {
+func (cd *coreDNSEtcd) Delete(domain, suffix string) error {
 	key := convertDomainToKey(domain + suffix)
 	log.Infof("delete %s", key)
 
@@ -93,4 +112,66 @@ func (cd *coreDNS) Delete(domain, suffix string) error {
 	_, err := cd.Client.Delete(ctx, key)
 	cancel()
 	return err
+}
+
+type coreDNSREST struct {
+	// address of coredns
+	dnsAddress string
+}
+
+// Update
+func (cd *coreDNSREST) Update(domain, ip, suffix string) error {
+	hostData := HostData{
+		Zone: suffix,
+		Name: domain,
+		Type: "A",
+		Address: ip,
+		TTL: defaultTTL,
+	}
+
+	return cd.doRequest(&hostData, http.MethodPut)
+}
+
+func (cd *coreDNSREST) doRequest(hostData *HostData, method string) error {
+	if hostData.Zone[0] == '.' {
+		hostData.Zone = hostData.Zone[1:]
+	}
+	if hostData.Zone[len(hostData.Zone) - 1] != '.' {
+		hostData.Zone += "."
+	}
+	hostData.Name = strings.ToLower(hostData.Name)
+
+	v, _ := json.Marshal(&hostData)
+	data := string(v)
+
+	client := &http.Client{}
+
+	url := cd.dnsAddress + "/dynapi"
+
+	log.Infof("url: %s, method: %s, data: %s", url, method, data)
+
+	reqest, err := http.NewRequest(method, url, strings.NewReader(data))
+	if err != nil {
+		return err
+	}
+
+	resp, err := client.Do(reqest)
+	if err != nil {
+		return err
+	}
+
+	defer resp.Body.Close()
+	return nil
+}
+
+// Delete
+func (cd *coreDNSREST) Delete(domain, suffix string) error {
+	hostData := HostData{
+		Zone: suffix,
+		Name: domain,
+		Type: "A",
+		TTL: defaultTTL,
+	}
+
+	return cd.doRequest(&hostData, http.MethodDelete)
 }

@@ -50,6 +50,9 @@ var (
 	// for health check
 	healthPort int
 
+	// core dns address
+	corednsAddress string
+
 	etcdKeyFile   string
 	etcdCertFile  string
 	etcdCaCertile string
@@ -90,6 +93,7 @@ var (
 			}
 
 			config := &controller.Config{}
+			config.CoreDnsAddress = corednsAddress
 			config.EtcdKeyFile = etcdKeyFile
 			config.EtcdCertFile = etcdCertFile
 			config.EtcdCaCertFile = etcdCaCertile
@@ -153,6 +157,7 @@ func main() {
 func init() {
 	proxyCmd.PersistentFlags().StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	proxyCmd.PersistentFlags().StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	proxyCmd.PersistentFlags().StringVar(&corednsAddress, "coredns", "", "The address of coredns.")
 	proxyCmd.PersistentFlags().IntVar(&healthPort, "healthport", 12345, "The port of the health check address.")
 	proxyCmd.PersistentFlags().StringVar(&etcdKeyFile, "etcdkeyfile", "", "Path to etcdkeyfile.")
 	proxyCmd.PersistentFlags().StringVar(&etcdCertFile, "etcdcertfile", "", "Path to etcdcertfile.")
