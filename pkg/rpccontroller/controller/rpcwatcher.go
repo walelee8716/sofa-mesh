@@ -122,8 +122,12 @@ func newRPCWatcher(lister listers.RpcServiceLister, client kubernetes.Interface,
 	rw.podWatcher = podWatcher
 	podWatcher.RegisterHandler(rw)
 
-	etcdClient := newEtcdClient(config)
-	rw.dnsInterface = newCoreDNS(etcdClient)
+	if config.CoreDnsAddress != "" {
+		rw.dnsInterface = newCoreDNSREST(config.CoreDnsAddress)
+	} else {
+		etcdClient := newEtcdClient(config)
+		rw.dnsInterface = newCoreDNSEtcd(etcdClient)
+	}
 
 	return rw
 }

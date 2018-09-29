@@ -19,6 +19,8 @@ package main
 
 import (
 	"time"
+	"net/http"
+	"fmt"
 
 	kubeinformers "k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
@@ -45,6 +47,12 @@ var (
 	masterURL  string
 	kubeconfig string
 
+	// for health check
+	healthPort int
+
+	// core dns address
+	corednsAddress string
+
 	etcdKeyFile   string
 	etcdCertFile  string
 	etcdCaCertile string
@@ -70,6 +78,8 @@ var (
 			}
 			log.Infof("Version %s", version.Info.String())
 
+			go startHealthCheckHttpServer(healthPort)
+
 			stopCh := signals.SetupSignalHandler()
 
 			if err := log.Configure(loggingOptions); err != nil {
@@ -83,6 +93,7 @@ var (
 			}
 
 			config := &controller.Config{}
+			config.CoreDnsAddress = corednsAddress
 			config.EtcdKeyFile = etcdKeyFile
 			config.EtcdCertFile = etcdCertFile
 			config.EtcdCaCertFile = etcdCaCertile
@@ -120,6 +131,22 @@ var (
 	}
 )
 
+func startHealthCheckHttpServer(port int) {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		fmt.Fprint(w, "ok")
+	})
+
+	log.Infof("Health check HTTP server listening at :%d ... ", port)
+	server := &http.Server{
+		Addr:    fmt.Sprintf(":%v", port),
+		Handler: mux,
+	}
+	server.ListenAndServe()
+}
+
 func main() {
 	if err := rootCmd.Execute(); err != nil {
 		log.Errora(err)
@@ -130,6 +157,8 @@ func main() {
 func init() {
 	proxyCmd.PersistentFlags().StringVar(&kubeconfig, "kubeconfig", "", "Path to a kubeconfig. Only required if out-of-cluster.")
 	proxyCmd.PersistentFlags().StringVar(&masterURL, "master", "", "The address of the Kubernetes API server. Overrides any value in kubeconfig. Only required if out-of-cluster.")
+	proxyCmd.PersistentFlags().StringVar(&corednsAddress, "coredns", "", "The address of coredns.")
+	proxyCmd.PersistentFlags().IntVar(&healthPort, "healthport", 12345, "The port of the health check address.")
 	proxyCmd.PersistentFlags().StringVar(&etcdKeyFile, "etcdkeyfile", "", "Path to etcdkeyfile.")
 	proxyCmd.PersistentFlags().StringVar(&etcdCertFile, "etcdcertfile", "", "Path to etcdcertfile.")
 	proxyCmd.PersistentFlags().StringVar(&etcdCaCertile, "etcdcacertfile", "", "Path to etcdcacertfile.")
